@@ -119,29 +119,62 @@ def export_excel(db: Session = Depends(get_db)):
     ws = wb.active
     ws.title = "Donnees Epicollect"
     
-    headers = ["ID", "Projet", "UUID", "Date creation", "Donnees"]
-    ws.append(headers)
+    # On récupère tous les noms de champs possibles
+    all_keys = set()
+    parsed_entries = []
     
     for e in entries:
         try:
             data = json.loads(e.data)
-            data_str = " | ".join([f"{k}: {v}" for k, v in data.items() if k not in ["ec5_uuid", "created_at", "uploaded_at"]])
         except:
-            data_str = ""
+            data = {}
         
-        ws.append([
-            e.id,
-            e.project_slug,
-            e.ec5_uuid,
-            e.created_at,
-            data_str
-        ])
+        clean = {
+            "ID": e.id,
+            "Projet": e.project_slug,
+            "UUID": e.ec5_uuid,
+            "Date creation": e.created_at
+        }
+        
+        for key, value in data.items():
+            if key in ["ec5_uuid", "created_at", "uploaded_at", "title"]:
+                continue
+            clean_key = key.split("_", 1)[-1] if "_" in key else key
+            clean_key = clean_key.replace("_", " ").capitalize()
+            
+            # On simplifie le GPS
+            if isinstance(value, dict) and ("latitude" in value or "lat" in value):
+                lat = value.get("latitude") or value.get("lat")
+                lon = value.get("longitude") or value.get("lon")
+                clean["Latitude"] = lat
+                clean["Longitude"] = lon
+                continue
+            
+            clean[clean_key] = value
+            all_keys.add(clean_key)
+        
+        parsed_entries.append(clean)
     
-    ws.column_dimensions['A'].width = 8
-    ws.column_dimensions['B'].width = 25
-    ws.column_dimensions['C'].width = 40
-    ws.column_dimensions['D'].width = 22
-    ws.column_dimensions['E'].width = 80
+    # En-têtes
+    headers = ["ID", "Projet", "UUID", "Date creation", "Latitude", "Longitude"] + sorted(list(all_keys))
+    ws.append(headers)
+    
+    # Données
+    for row in parsed_entries:
+        line = [row.get(h, "") for h in headers]
+        ws.append(line)
+    
+    # Largeur des colonnes
+    for col in ws.columns:
+        max_length = 0
+        column = col[0].column_letter
+        for cell in col:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        ws.column_dimensions[column].width = min(max_length + 2, 40)
     
     output = BytesIO()
     wb.save(output)
@@ -152,7 +185,6 @@ def export_excel(db: Session = Depends(get_db)):
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": "attachment; filename=suivi_eau_export.xlsx"}
     )
-
 @app.get("/api/entries")
 def api_entries(db: Session = Depends(get_db)):
     entries = db.query(Entry).all()
