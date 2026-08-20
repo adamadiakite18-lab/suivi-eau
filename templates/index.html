@@ -49,9 +49,12 @@
 <body>
     <div class="container">
         <header>
-            <h1>Suivi Ressource en Eau</h1>
-            <a href="/sync" class="btn">🔄 Synchroniser les données</a>
-        </header>
+    <h1>Suivi Ressource en Eau</h1>
+    <div style="display: flex; gap: 12px;">
+        <a href="/export" class="btn" style="background:#27ae60;">📥 Exporter Excel</a>
+        <a href="/sync" class="btn">🔄 Synchroniser les données</a>
+    </div>
+</header>
 
         <div class="stats">
             Total d'entrées synchronisées : <strong>{{ total }}</strong>

@@ -7,6 +7,9 @@ from models import Entry
 import json
 from sync import sync_all
 from datetime import datetime
+from fastapi.responses import StreamingResponse
+from openpyxl import Workbook
+from io import BytesIO
 
 Base.metadata.create_all(bind=engine)
 
@@ -121,4 +124,47 @@ def api_entries(db: Session = Depends(get_db)):
             "data": json.loads(e.data)
         }
         for e in entries
+        @app.get("/export")
+def export_excel(db: Session = Depends(get_db)):
+    entries = db.query(Entry).order_by(Entry.id.desc()).all()
+    
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Donnees Epicollect"
+    
+    # En-têtes
+    headers = ["ID", "Projet", "UUID", "Date creation", "Donnees"]
+    ws.append(headers)
+    
+    for e in entries:
+        try:
+            data = json.loads(e.data)
+            data_str = " | ".join([f"{k}: {v}" for k, v in data.items() if k not in ["ec5_uuid", "created_at", "uploaded_at"]])
+        except:
+            data_str = ""
+        
+        ws.append([
+            e.id,
+            e.project_slug,
+            e.ec5_uuid,
+            e.created_at,
+            data_str
+        ])
+    
+    # Ajuster la largeur des colonnes
+    ws.column_dimensions['A'].width = 8
+    ws.column_dimensions['B'].width = 25
+    ws.column_dimensions['C'].width = 40
+    ws.column_dimensions['D'].width = 22
+    ws.column_dimensions['E'].width = 80
+    
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=suivi_eau_export.xlsx"}
+    )
     ]
