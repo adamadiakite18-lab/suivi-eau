@@ -6,17 +6,12 @@ from database import get_db, engine, Base
 from models import Entry
 import json
 from sync import sync_all
-from datetime import datetime, timedelta
+from datetime import datetime
 
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Suivi Ressource en Eau")
-
 templates = Jinja2Templates(directory="templates")
-
-@from datetime import datetime, timedelta
-
-from datetime import datetime, timedelta
 
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request, db: Session = Depends(get_db)):
@@ -44,12 +39,10 @@ def home(request: Request, db: Session = Depends(get_db)):
             clean_key = key.split("_", 1)[-1] if "_" in key else key
             clean_key = clean_key.replace("_", " ").capitalize()
             
-            # Photo
             if isinstance(value, str) and ("photo" in key.lower() or "image" in key.lower() or (value.startswith("http") and "media" in value)):
                 photo_url = value
                 continue
             
-            # GPS
             if isinstance(value, dict) and ("latitude" in value or "lat" in value):
                 lat = value.get("latitude") or value.get("lat")
                 lon = value.get("longitude") or value.get("lon") or value.get("lng")
@@ -57,28 +50,25 @@ def home(request: Request, db: Session = Depends(get_db)):
                 gps_info = {"lat": lat, "lon": lon, "accuracy": accuracy}
                 continue
             
-            # État du chantier
             if "etat" in key.lower() and "chantier" in key.lower():
                 etat_chantier = str(value).strip()
             
-            # Date de démarrage
             if "date" in key.lower() and "demarrage" in key.lower():
                 date_demarrage = str(value).strip()
             
             clean_data[clean_key] = value
         
-        # Calcul de l'alerte (plus de 80 jours en "Travaux en cours")
         alerte = False
         jours = None
         if etat_chantier and "travaux en cours" in etat_chantier.lower() and date_demarrage:
             try:
-                # On essaie plusieurs formats de date
+                d = None
                 for fmt in ("%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y"):
                     try:
                         d = datetime.strptime(date_demarrage, fmt)
                         break
                     except:
-                        d = None
+                        pass
                 if d:
                     jours = (datetime.now() - d).days
                     if jours > 80:
