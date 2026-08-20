@@ -6,6 +6,7 @@ from database import get_db, engine, Base
 from models import Entry
 import json
 from sync import sync_all
+from datetime import datetime, timedelta
 
 Base.metadata.create_all(bind=engine)
 
