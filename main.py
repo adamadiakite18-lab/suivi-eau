@@ -1,13 +1,12 @@
 from fastapi import FastAPI, Request, Depends
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from database import get_db, engine, Base
 from models import Entry
 import json
 from sync import sync_all
 from datetime import datetime
-from fastapi.responses import StreamingResponse
 from openpyxl import Workbook
 from io import BytesIO
 
@@ -112,19 +111,7 @@ def synchroniser():
     sync_all()
     return {"message": "Synchronisation terminée avec succès"}
 
-@app.get("/api/entries")
-def api_entries(db: Session = Depends(get_db)):
-    entries = db.query(Entry).all()
-    return [
-        {
-            "id": e.id,
-            "project": e.project_slug,
-            "uuid": e.ec5_uuid,
-            "created_at": e.created_at,
-            "data": json.loads(e.data)
-        }
-        for e in entries
-        @app.get("/export")
+@app.get("/export")
 def export_excel(db: Session = Depends(get_db)):
     entries = db.query(Entry).order_by(Entry.id.desc()).all()
     
@@ -132,7 +119,6 @@ def export_excel(db: Session = Depends(get_db)):
     ws = wb.active
     ws.title = "Donnees Epicollect"
     
-    # En-têtes
     headers = ["ID", "Projet", "UUID", "Date creation", "Donnees"]
     ws.append(headers)
     
@@ -151,7 +137,6 @@ def export_excel(db: Session = Depends(get_db)):
             data_str
         ])
     
-    # Ajuster la largeur des colonnes
     ws.column_dimensions['A'].width = 8
     ws.column_dimensions['B'].width = 25
     ws.column_dimensions['C'].width = 40
@@ -167,4 +152,17 @@ def export_excel(db: Session = Depends(get_db)):
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": "attachment; filename=suivi_eau_export.xlsx"}
     )
+
+@app.get("/api/entries")
+def api_entries(db: Session = Depends(get_db)):
+    entries = db.query(Entry).all()
+    return [
+        {
+            "id": e.id,
+            "project": e.project_slug,
+            "uuid": e.ec5_uuid,
+            "created_at": e.created_at,
+            "data": json.loads(e.data)
+        }
+        for e in entries
     ]
