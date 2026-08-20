@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suivi Ressource en Eau</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f0f4f8;
+            color: #333;
+        }
+        .container { max-width: 1100px; margin: 0 auto; }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            background: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        h1 { margin: 0; color: #1a5276; font-size: 1.6rem; }
+        .btn {
+            background: #2980b9;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 500;
+        }
+        .btn:hover { background: #1a5276; }
+        .stats {
+            background: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        }
+        #map {
+            height: 450px;
+            width: 100%;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border: 1px solid #ddd;
+        }
+        .card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        .card-header {
+            background: #1a5276;
+            color: white;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.95rem;
+        }
+        .card-body { padding: 18px 20px; }
+        .field {
+            display: flex;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #f0f0f0;
+            padding-bottom: 6px;
+        }
+        .field-label {
+            font-weight: 600;
+            width: 200px;
+            color: #555;
+            flex-shrink: 0;
+        }
+        .field-value { flex: 1; word-break: break-word; }
+        .project-badge {
+            background: #3498db;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+        .photo {
+            max-width: 100%;
+            max-height: 280px;
+            border-radius: 8px;
+            margin-top: 12px;
+            border: 1px solid #ddd;
+        }
+        .gps {
+            background: #eaf4fb;
+            padding: 10px 14px;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-size: 0.95rem;
+        }
+        .gps a { color: #2980b9; text-decoration: none; font-weight: 500; }
+        .empty {
+            text-align: center;
+            padding: 40px;
+            color: #777;
+            background: white;
+            border-radius: 10px;
+        }
+        .leaflet-popup-content {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            font-size: 14px;
+            line-height: 1.45;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Suivi Ressource en Eau</h1>
+            <a href="/sync" class="btn">🔄 Synchroniser les données</a>
+        </header>
+
+        <div class="stats">
+            Total d'entrées synchronisées : <strong>{{ total }}</strong>
+        </div>
+
+        <div id="map"></div>
+
+        {% if entries %}
+            {% for entry in entries %}
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <span class="project-badge">{{ entry.project }}</span>
+                        &nbsp; • &nbsp; {{ entry.created_at }}
+                    </div>
+                    <div style="font-size: 0.8rem; opacity: 0.9;">ID: {{ entry.id }}</div>
+                </div>
+                <div class="card-body">
+                    {% for key, value in entry.data.items() %}
+                    <div class="field">
+                        <div class="field-label">{{ key }}</div>
+                        <div class="field-value">{{ value }}</div>
+                    </div>
+                    {% endfor %}
+
+                    {% if entry.gps %}
+                    <div class="gps">
+                        📍 <strong>GPS :</strong> 
+                        Latitude {{ entry.gps.lat }} — Longitude {{ entry.gps.lon }}
+                        {% if entry.gps.accuracy %} (précision ±{{ entry.gps.accuracy }} m){% endif %}
+                        <br>
+                        <a href="https://www.google.com/maps?q={{ entry.gps.lat }},{{ entry.gps.lon }}" target="_blank">
+                            Voir sur Google Maps →
+                        </a>
+                    </div>
+                    {% endif %}
+
+                    {% if entry.photo %}
+                    <div style="margin-top: 15px;">
+                        <strong>Photo :</strong><br>
+                        <img src="{{ entry.photo }}" alt="Photo" class="photo" onerror="this.style.display='none'">
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty">
+                Aucune donnée pour le moment.<br>
+                Clique sur <strong>Synchroniser les données</strong>.
+            </div>
+        {% endif %}
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // ===== Icônes SVG personnalisées =====
+        function createSvgIcon(color) {
+            const svg = `
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="28" height="42">
+                    <path fill="${color}" stroke="#fff" stroke-width="1.2"
+                          d="M12 0C5.4 0 0 5.4 0 12c0 7.2 12 24 12 24s12-16.8 12-24C24 5.4 18.6 0 12 0z"/>
+                    <circle cx="12" cy="12" r="5" fill="#fff"/>
+                </svg>`;
+            return L.divIcon({
+                html: svg,
+                className: '',
+                iconSize: [28, 42],
+                iconAnchor: [14, 42],
+                popupAnchor: [0, -36]
+            });
+        }
+
+        const iconBlue = createSvgIcon('#2980b9');   // suivi-infrastructure
+        const iconRed  = createSvgIcon('#e74c3c');   // test-diakite
+        const iconGreen = createSvgIcon('#27ae60');  // autres
+
+        // ===== Carte =====
+        var map = L.map('map').setView([12.65, -8.00], 7);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        // Points
+        var points = [
+            {% for entry in entries %}
+                {% if entry.gps %}
+                {
+                    lat: {{ entry.gps.lat }},
+                    lon: {{ entry.gps.lon }},
+                    project: "{{ entry.project }}",
+                    date: "{{ entry.created_at }}",
+                    id: {{ entry.id }}
+                },
+                {% endif %}
+            {% endfor %}
+        ];
+
+        var markers = [];
+        points.forEach(function(p) {
+            if (p.lat && p.lon) {
+                let icon = iconGreen;
+                if (p.project === "suivi-infrastructure") icon = iconBlue;
+                if (p.project === "test-diakite") icon = iconRed;
+
+                var marker = L.marker([p.lat, p.lon], {icon: icon}).addTo(map);
+                
+                marker.bindPopup(`
+                    <div style="min-width:190px">
+                        <strong style="color:#1a5276;font-size:15px">${p.project}</strong><br>
+                        📅 ${p.date}<br>
+                        ID : ${p.id}<br><br>
+                        <a href="https://www.google.com/maps?q=${p.lat},${p.lon}" target="_blank" style="color:#2980b9">
+                            Ouvrir dans Google Maps →
+                        </a>
+                    </div>
+                `);
+                
+                markers.push(marker);
+            }
+        });
+
+        if (markers.length > 0) {
+            var group = new L.featureGroup(markers);
+            map.fitBounds(group.getBounds().pad(0.25));
+        }
+    </script>
+</body>
+</html>
