@@ -6,3 +6,4 @@ python-dotenv
 requests
 jinja2==3.1.4
 starlette==0.41.3
+openpyxl
