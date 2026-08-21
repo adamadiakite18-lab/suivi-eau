@@ -16,13 +16,29 @@ app = FastAPI(title="Suivi Ressource en Eau")
 templates = Jinja2Templates(directory="templates")
 
 @app.get("/", response_class=HTMLResponse)
-def home(request: Request, db: Session = Depends(get_db)):
-    entries = db.query(Entry).order_by(Entry.id.desc()).limit(200).all()
+def home(
+    request: Request, 
+    db: Session = Depends(get_db),
+    projet: str = None,
+    etat: str = None,
+    commune: str = None
+):
+    query = db.query(Entry)
+    
+    # On récupère toutes les entrées d'abord
+    all_entries = query.order_by(Entry.id.desc()).all()
     
     entries_data = []
     alertes = []
+    stats = {
+        "total": 0,
+        "alertes": 0,
+        "par_projet": {},
+        "par_etat": {},
+        "par_commune": {}
+    }
     
-    for e in entries:
+    for e in all_entries:
         try:
             data = json.loads(e.data)
         except:
@@ -33,6 +49,7 @@ def home(request: Request, db: Session = Depends(get_db)):
         gps_info = None
         etat_chantier = None
         date_demarrage = None
+        commune_val = None
         
         for key, value in data.items():
             if key in ["ec5_uuid", "created_at", "uploaded_at", "title"]:
@@ -58,8 +75,20 @@ def home(request: Request, db: Session = Depends(get_db)):
             if "date" in key.lower() and "demarrage" in key.lower():
                 date_demarrage = str(value).strip()
             
+            if "commune" in key.lower():
+                commune_val = str(value).strip()
+            
             clean_data[clean_key] = value
         
+        # Filtres
+        if projet and e.project_slug != projet:
+            continue
+        if etat and etat_chantier and etat.lower() not in etat_chantier.lower():
+            continue
+        if commune and commune_val and commune.lower() not in commune_val.lower():
+            continue
+        
+        # Alerte
         alerte = False
         jours = None
         if etat_chantier and "travaux en cours" in etat_chantier.lower() and date_demarrage:
@@ -84,6 +113,19 @@ def home(request: Request, db: Session = Depends(get_db)):
             except:
                 pass
         
+        # Statistiques
+        stats["total"] += 1
+        if alerte:
+            stats["alertes"] += 1
+        
+        stats["par_projet"][e.project_slug] = stats["par_projet"].get(e.project_slug, 0) + 1
+        
+        if etat_chantier:
+            stats["par_etat"][etat_chantier] = stats["par_etat"].get(etat_chantier, 0) + 1
+        
+        if commune_val:
+            stats["par_commune"][commune_val] = stats["par_commune"].get(commune_val, 0) + 1
+        
         entries_data.append({
             "id": e.id,
             "project": e.project_slug,
@@ -93,16 +135,30 @@ def home(request: Request, db: Session = Depends(get_db)):
             "photo": photo_url,
             "gps": gps_info,
             "alerte": alerte,
-            "jours": jours
+            "jours": jours,
+            "etat": etat_chantier,
+            "commune": commune_val
         })
+    
+    # Listes pour les filtres
+    projets = sorted(list(set([e.project_slug for e in all_entries])))
+    etats = sorted(list(stats["par_etat"].keys()))
+    communes = sorted(list(stats["par_commune"].keys()))
     
     return templates.TemplateResponse(
         request=request,
         name="index.html",
         context={
             "entries": entries_data,
-            "total": db.query(Entry).count(),
-            "alertes": alertes
+            "total": stats["total"],
+            "alertes": alertes,
+            "stats": stats,
+            "projets": projets,
+            "etats": etats,
+            "communes": communes,
+            "filtre_projet": projet,
+            "filtre_etat": etat,
+            "filtre_commune": commune
         }
     )
 

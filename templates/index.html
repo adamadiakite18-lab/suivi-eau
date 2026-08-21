@@ -3,121 +3,209 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Suivi Ressource en Eau</title>
+    <title>Suivi Ressource en Eau - Tableau de bord</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * { box-sizing: border-box; }
         body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 20px; background: #f0f4f8; color: #333; }
-        .container { max-width: 1100px; margin: 0 auto; }
+        .container { max-width: 1200px; margin: 0 auto; }
         header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: white; padding: 15px 25px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-        h1 { margin: 0; color: #1a5276; font-size: 1.6rem; }
-        .btn { background: #2980b9; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: 500; }
+        h1 { margin: 0; color: #1a5276; font-size: 1.5rem; }
+        .btn { background: #2980b9; color: white; padding: 9px 16px; text-decoration: none; border-radius: 6px; font-weight: 500; font-size: 0.9rem; }
         .btn:hover { background: #1a5276; }
-        .stats { background: white; padding: 12px 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+        .btn-green { background: #27ae60; }
+        .btn-green:hover { background: #1e8449; }
         
-        /* Alerte rouge */
-        .alerte-box {
-            background: #fdecea;
-            border: 1px solid #e74c3c;
-            border-left: 6px solid #e74c3c;
-            color: #c0392b;
-            padding: 14px 18px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            font-weight: 500;
-        }
-        .alerte-box strong { color: #922b21; }
+        /* Dashboard cards */
+        .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .card-stat { background: white; padding: 18px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); text-align: center; }
+        .card-stat .number { font-size: 2rem; font-weight: 700; color: #1a5276; }
+        .card-stat .label { color: #666; font-size: 0.9rem; margin-top: 4px; }
+        .card-stat.alerte .number { color: #e74c3c; }
         
-        #map { height: 420px; width: 100%; border-radius: 10px; margin-bottom: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 1px solid #ddd; }
+        /* Filtres */
+        .filters { background: white; padding: 15px 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+        .filters label { font-size: 0.85rem; color: #555; display: block; margin-bottom: 4px; }
+        .filters select { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; min-width: 160px; }
+        .filters button { padding: 8px 16px; background: #2980b9; color: white; border: none; border-radius: 6px; cursor: pointer; }
         
-        .card { background: white; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 20px; overflow: hidden; }
+        /* Graphiques */
+        .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px; }
+        .chart-box { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .chart-box h3 { margin: 0 0 12px 0; font-size: 1rem; color: #1a5276; }
+        
+        #map { height: 400px; width: 100%; border-radius: 10px; margin-bottom: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        
+        .alerte-box { background: #fdecea; border-left: 5px solid #e74c3c; color: #c0392b; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; }
+        
+        .card { background: white; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 18px; overflow: hidden; }
         .card.alerte { border: 2px solid #e74c3c; }
-        .card-header { background: #1a5276; color: white; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; font-size: 0.95rem; }
+        .card-header { background: #1a5276; color: white; padding: 11px 18px; display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; }
         .card.alerte .card-header { background: #c0392b; }
-        .card-body { padding: 18px 20px; }
-        .field { display: flex; margin-bottom: 8px; border-bottom: 1px solid #f0f0f0; padding-bottom: 6px; }
-        .field-label { font-weight: 600; width: 200px; color: #555; flex-shrink: 0; }
-        .field-value { flex: 1; word-break: break-word; }
-        .project-badge { background: #3498db; padding: 3px 10px; border-radius: 20px; font-size: 0.8rem; }
-        .badge-alerte { background: #e74c3c; color: white; padding: 3px 10px; border-radius: 20px; font-size: 0.8rem; margin-left: 8px; }
-        .photo { max-width: 100%; max-height: 280px; border-radius: 8px; margin-top: 12px; border: 1px solid #ddd; }
-        .gps { background: #eaf4fb; padding: 10px 14px; border-radius: 6px; margin-top: 10px; font-size: 0.95rem; }
-        .gps a { color: #2980b9; text-decoration: none; font-weight: 500; }
-        .empty { text-align: center; padding: 40px; color: #777; background: white; border-radius: 10px; }
+        .card-body { padding: 15px 18px; }
+        .field { display: flex; margin-bottom: 6px; border-bottom: 1px solid #f0f0f0; padding-bottom: 5px; font-size: 0.92rem; }
+        .field-label { font-weight: 600; width: 180px; color: #555; }
+        .project-badge { background: #3498db; padding: 2px 9px; border-radius: 20px; font-size: 0.75rem; }
+        .badge-alerte { background: #e74c3c; color: white; padding: 2px 9px; border-radius: 20px; font-size: 0.75rem; margin-left: 6px; }
+        .photo { max-width: 100%; max-height: 220px; border-radius: 8px; margin-top: 10px; }
+        .gps { background: #eaf4fb; padding: 8px 12px; border-radius: 6px; margin-top: 8px; font-size: 0.9rem; }
+        
+        @media (max-width: 768px) {
+            .charts { grid-template-columns: 1fr; }
+            header { flex-direction: column; gap: 12px; }
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-    <h1>Suivi Ressource en Eau</h1>
-    <div style="display: flex; gap: 12px;">
-        <a href="/export" class="btn" style="background:#27ae60;">📥 Exporter Excel</a>
-        <a href="/sync" class="btn">🔄 Synchroniser les données</a>
-    </div>
-</header>
+            <h1>Suivi Ressource en Eau</h1>
+            <div style="display: flex; gap: 10px;">
+                <a href="/export" class="btn btn-green">📥 Excel</a>
+                <a href="/sync" class="btn">🔄 Synchroniser</a>
+            </div>
+        </header>
 
-        <div class="stats">
-            Total d'entrées synchronisées : <strong>{{ total }}</strong>
+        <!-- Cartes de résumé -->
+        <div class="dashboard">
+            <div class="card-stat">
+                <div class="number">{{ total }}</div>
+                <div class="label">Total entrées</div>
+            </div>
+            <div class="card-stat alerte">
+                <div class="number">{{ alertes|length }}</div>
+                <div class="label">Alertes (> 80 jours)</div>
+            </div>
+            <div class="card-stat">
+                <div class="number">{{ stats.par_projet|length }}</div>
+                <div class="label">Projets</div>
+            </div>
+            <div class="card-stat">
+                <div class="number">{{ stats.par_commune|length }}</div>
+                <div class="label">Communes</div>
+            </div>
         </div>
+
+        <!-- Filtres -->
+        <form class="filters" method="get">
+            <div>
+                <label>Projet</label>
+                <select name="projet">
+                    <option value="">Tous les projets</option>
+                    {% for p in projets %}
+                    <option value="{{ p }}" {% if filtre_projet == p %}selected{% endif %}>{{ p }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label>État du chantier</label>
+                <select name="etat">
+                    <option value="">Tous les états</option>
+                    {% for e in etats %}
+                    <option value="{{ e }}" {% if filtre_etat == e %}selected{% endif %}>{{ e }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label>Commune</label>
+                <select name="commune">
+                    <option value="">Toutes les communes</option>
+                    {% for c in communes %}
+                    <option value="{{ c }}" {% if filtre_commune == c %}selected{% endif %}>{{ c }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit">Filtrer</button>
+            <a href="/" class="btn" style="background:#7f8c8d;">Réinitialiser</a>
+        </form>
 
         {% if alertes %}
         <div class="alerte-box">
-            ⚠️ <strong>Alerte :</strong> {{ alertes|length }} chantier(s) en « Travaux en cours » depuis plus de 80 jours.
-            <ul style="margin: 8px 0 0 20px;">
-                {% for a in alertes %}
-                <li>ID {{ a.id }} ({{ a.project }}) — {{ a.jours }} jours depuis le {{ a.date_demarrage }}</li>
-                {% endfor %}
-            </ul>
+            ⚠️ <strong>{{ alertes|length }} alerte(s)</strong> : chantiers en « Travaux en cours » depuis plus de 80 jours.
         </div>
         {% endif %}
 
+        <!-- Graphiques -->
+        <div class="charts">
+            <div class="chart-box">
+                <h3>Répartition par projet</h3>
+                <canvas id="chartProjet" height="200"></canvas>
+            </div>
+            <div class="chart-box">
+                <h3>Répartition par état du chantier</h3>
+                <canvas id="chartEtat" height="200"></canvas>
+            </div>
+        </div>
+
+        <!-- Carte -->
         <div id="map"></div>
 
-        {% if entries %}
-            {% for entry in entries %}
-            <div class="card {% if entry.alerte %}alerte{% endif %}">
-                <div class="card-header">
-                    <div>
-                        <span class="project-badge">{{ entry.project }}</span>
-                        {% if entry.alerte %}
-                        <span class="badge-alerte">⚠️ {{ entry.jours }} jours</span>
-                        {% endif %}
-                        &nbsp; • &nbsp; {{ entry.created_at }}
-                    </div>
-                    <div style="font-size: 0.8rem; opacity: 0.9;">ID: {{ entry.id }}</div>
+        <!-- Liste des entrées -->
+        {% for entry in entries %}
+        <div class="card {% if entry.alerte %}alerte{% endif %}">
+            <div class="card-header">
+                <div>
+                    <span class="project-badge">{{ entry.project }}</span>
+                    {% if entry.alerte %}<span class="badge-alerte">⚠️ {{ entry.jours }} jours</span>{% endif %}
+                    &nbsp; • {{ entry.created_at }}
                 </div>
-                <div class="card-body">
-                    {% for key, value in entry.data.items() %}
-                    <div class="field">
-                        <div class="field-label">{{ key }}</div>
-                        <div class="field-value">{{ value }}</div>
-                    </div>
-                    {% endfor %}
-
-                    {% if entry.gps %}
-                    <div class="gps">
-                        📍 <strong>GPS :</strong> Latitude {{ entry.gps.lat }} — Longitude {{ entry.gps.lon }}
-                        {% if entry.gps.accuracy %} (précision ±{{ entry.gps.accuracy }} m){% endif %}<br>
-                        <a href="https://www.google.com/maps?q={{ entry.gps.lat }},{{ entry.gps.lon }}" target="_blank">Voir sur Google Maps →</a>
-                    </div>
-                    {% endif %}
-
-                    {% if entry.photo %}
-                    <div style="margin-top: 15px;">
-                        <strong>Photo :</strong><br>
-                        <img src="{{ entry.photo }}" alt="Photo" class="photo" onerror="this.style.display='none'">
-                    </div>
-                    {% endif %}
-                </div>
+                <div>ID: {{ entry.id }}</div>
             </div>
-            {% endfor %}
+            <div class="card-body">
+                {% for key, value in entry.data.items() %}
+                <div class="field">
+                    <div class="field-label">{{ key }}</div>
+                    <div>{{ value }}</div>
+                </div>
+                {% endfor %}
+                {% if entry.gps %}
+                <div class="gps">
+                    📍 Latitude {{ entry.gps.lat }} — Longitude {{ entry.gps.lon }}
+                    <a href="https://www.google.com/maps?q={{ entry.gps.lat }},{{ entry.gps.lon }}" target="_blank"> → Google Maps</a>
+                </div>
+                {% endif %}
+                {% if entry.photo %}
+                <img src="{{ entry.photo }}" class="photo" onerror="this.style.display='none'">
+                {% endif %}
+            </div>
+        </div>
         {% else %}
-            <div class="empty">Aucune donnée. Clique sur Synchroniser.</div>
-        {% endif %}
+        <div style="text-align:center; padding:40px; background:white; border-radius:10px;">
+            Aucune donnée avec ces filtres.
+        </div>
+        {% endfor %}
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
+        // Graphiques
+        new Chart(document.getElementById('chartProjet'), {
+            type: 'doughnut',
+            data: {
+                labels: {{ stats.par_projet.keys()|list|tojson }},
+                datasets: [{
+                    data: {{ stats.par_projet.values()|list|tojson }},
+                    backgroundColor: ['#2980b9', '#27ae60', '#e74c3c', '#f39c12', '#8e44ad']
+                }]
+            },
+            options: { plugins: { legend: { position: 'bottom' } } }
+        });
+
+        new Chart(document.getElementById('chartEtat'), {
+            type: 'bar',
+            data: {
+                labels: {{ stats.par_etat.keys()|list|tojson }},
+                datasets: [{
+                    label: 'Nombre',
+                    data: {{ stats.par_etat.values()|list|tojson }},
+                    backgroundColor: '#3498db'
+                }]
+            },
+            options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+        });
+
+        // Carte
         function createSvgIcon(color) {
             const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="28" height="42">
                 <path fill="${color}" stroke="#fff" stroke-width="1.2" d="M12 0C5.4 0 0 5.4 0 12c0 7.2 12 24 12 24s12-16.8 12-24C24 5.4 18.6 0 12 0z"/>
@@ -126,7 +214,6 @@
         }
         const iconBlue = createSvgIcon('#2980b9');
         const iconRed = createSvgIcon('#e74c3c');
-        const iconGreen = createSvgIcon('#27ae60');
 
         var map = L.map('map').setView([12.65, -8.00], 7);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
@@ -142,15 +229,14 @@
         var markers = [];
         points.forEach(function(p) {
             if (p.lat && p.lon) {
-                let icon = p.alerte ? iconRed : (p.project === "suivi-infrastructure" ? iconBlue : iconGreen);
+                var icon = p.alerte ? iconRed : iconBlue;
                 var marker = L.marker([p.lat, p.lon], {icon: icon}).addTo(map);
-                marker.bindPopup(`<strong>${p.project}</strong><br>${p.date}<br>ID: ${p.id}${p.alerte ? '<br><span style="color:#e74c3c">⚠️ Alerte > 80 jours</span>' : ''}`);
+                marker.bindPopup(`<b>${p.project}</b><br>${p.date}<br>ID: ${p.id}`);
                 markers.push(marker);
             }
         });
         if (markers.length > 0) {
-            var group = new L.featureGroup(markers);
-            map.fitBounds(group.getBounds().pad(0.25));
+            map.fitBounds(new L.featureGroup(markers).getBounds().pad(0.2));
         }
     </script>
 </body>
