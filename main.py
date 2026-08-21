@@ -14,9 +14,12 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Suivi Ressource en Eau")
 templates = Jinja2Templates(directory="templates")
-
 @app.get("/", response_class=HTMLResponse)
-def home(
+def accueil(request: Request):
+    return templates.TemplateResponse("accueil.html", {"request": request})
+
+@app.get("/dashboard", response_class=HTMLResponse)
+def dashboard(
     request: Request, 
     db: Session = Depends(get_db),
     projet: str = None,

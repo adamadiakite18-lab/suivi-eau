@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suivi Ressource en Eau</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; color: #1a1a2e; line-height: 1.6; }
+        
+        /* Navbar */
+        .navbar {
+            background: white;
+            padding: 12px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .navbar .logo { font-weight: 700; font-size: 1.2rem; color: #1a5276; }
+        .navbar nav a {
+            margin-left: 25px;
+            text-decoration: none;
+            color: #333;
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+        .navbar nav a:hover { color: #2980b9; }
+        .btn-connexion {
+            background: #1a5276;
+            color: white !important;
+            padding: 8px 20px;
+            border-radius: 25px;
+        }
+        
+        /* Hero */
+        .hero {
+            background: linear-gradient(135deg, #0c2d48 0%, #1a5276 50%, #2980b9 100%);
+            color: white;
+            padding: 80px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 40px;
+            min-height: 480px;
+        }
+        .hero-content { max-width: 550px; }
+        .hero-content h1 {
+            font-size: 2.8rem;
+            line-height: 1.2;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+        .hero-content p {
+            font-size: 1.15rem;
+            opacity: 0.9;
+            margin-bottom: 30px;
+        }
+        .hero-buttons a {
+            display: inline-block;
+            padding: 12px 28px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            margin-right: 12px;
+        }
+        .btn-primary { background: white; color: #1a5276; }
+        .btn-secondary { background: transparent; border: 2px solid white; color: white; }
+        .hero-visual {
+            background: rgba(255,255,255,0.12);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            max-width: 420px;
+        }
+        .hero-visual h3 { font-size: 1.4rem; margin-bottom: 10px; }
+        
+        /* Modules */
+        .modules {
+            padding: 70px 40px;
+            background: #f8fafc;
+        }
+        .modules h2 {
+            text-align: center;
+            font-size: 1.9rem;
+            color: #1a5276;
+            margin-bottom: 15px;
+        }
+        .modules .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+        }
+        .modules-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 25px;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+        .module-card {
+            background: white;
+            border-radius: 14px;
+            padding: 28px 22px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+            text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-decoration: none;
+            color: inherit;
+        }
+        .module-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+        .module-card .icon { font-size: 2.5rem; margin-bottom: 12px; }
+        .module-card h3 { color: #1a5276; margin-bottom: 8px; font-size: 1.15rem; }
+        .module-card p { color: #666; font-size: 0.9rem; }
+        
+        /* CTA */
+        .cta {
+            background: #1a5276;
+            color: white;
+            text-align: center;
+            padding: 50px 20px;
+        }
+        .cta h2 { margin-bottom: 15px; }
+        .cta a {
+            display: inline-block;
+            background: white;
+            color: #1a5276;
+            padding: 12px 30px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            margin-top: 15px;
+        }
+        
+        /* Footer */
+        footer {
+            background: #0c2d48;
+            color: #ccc;
+            text-align: center;
+            padding: 25px;
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 768px) {
+            .hero { flex-direction: column; text-align: center; padding: 50px 20px; }
+            .hero-content h1 { font-size: 2rem; }
+            .navbar { padding: 12px 20px; flex-direction: column; gap: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <div class="navbar">
+        <div class="logo">💧 Suivi Ressource en Eau</div>
+        <nav>
+            <a href="/dashboard">Tableau de bord</a>
+            <a href="/dashboard">Données</a>
+            <a href="/export">Export</a>
+            <a href="/dashboard" class="btn-connexion">Accéder</a>
+        </nav>
+    </div>
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1>Plateforme de Suivi des Ressources en Eau</h1>
+            <p>
+                Données fiables, décisions éclairées, ressources durables.<br>
+                Suivi des infrastructures et chantiers en temps réel synchronisé avec Epicollect5.
+            </p>
+            <div class="hero-buttons">
+                <a href="/dashboard" class="btn-primary">Voir le tableau de bord</a>
+                <a href="/dashboard" class="btn-secondary">Explorer les données</a>
+            </div>
+        </div>
+        <div class="hero-visual">
+            <div style="font-size: 4rem; margin-bottom: 10px;">💧</div>
+            <h3>Suivi en temps réel</h3>
+            <p style="opacity: 0.9; font-size: 0.95rem;">
+                Synchronisation automatique avec Epicollect5<br>
+                Cartographie • Alertes • Statistiques
+            </p>
+        </div>
+    </section>
+
+    <!-- Modules -->
+    <section class="modules">
+        <h2>Modules de suivi</h2>
+        <p class="subtitle">Accédez aux différents volets de suivi des ressources et infrastructures</p>
+        
+        <div class="modules-grid">
+            <a href="/dashboard" class="module-card">
+                <div class="icon">🏗️</div>
+                <h3>Infrastructures</h3>
+                <p>Suivi des ouvrages, chantiers et taux d’exécution</p>
+            </a>
+            <a href="/dashboard" class="module-card">
+                <div class="icon">📍</div>
+                <h3>Cartographie</h3>
+                <p>Localisation GPS des points et chantiers sur OpenStreetMap</p>
+            </a>
+            <a href="/dashboard" class="module-card">
+                <div class="icon">⚠️</div>
+                <h3>Alertes</h3>
+                <p>Chantiers en retard ou en travaux depuis trop longtemps</p>
+            </a>
+            <a href="/dashboard" class="module-card">
+                <div class="icon">📊</div>
+                <h3>Statistiques</h3>
+                <p>Graphiques, filtres et indicateurs de performance</p>
+            </a>
+            <a href="/export" class="module-card">
+                <div class="icon">📥</div>
+                <h3>Export Excel</h3>
+                <p>Téléchargement des données pour analyse approfondie</p>
+            </a>
+            <a href="/sync" class="module-card">
+                <div class="icon">🔄</div>
+                <h3>Synchronisation</h3>
+                <p>Mise à jour des données depuis Epicollect5</p>
+            </a>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta">
+        <h2>Prêt à consulter les données ?</h2>
+        <p>Accédez au tableau de bord complet avec filtres, carte et graphiques.</p>
+        <a href="/dashboard">Ouvrir le tableau de bord</a>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        Plateforme de Suivi des Ressources en Eau • Synchronisée avec Epicollect5<br>
+        © 2026
+    </footer>
+</body>
+</html>
