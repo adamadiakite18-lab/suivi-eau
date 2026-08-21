@@ -12,7 +12,7 @@ from io import BytesIO
 
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Suivi Ressource en Eau")
+app = FastAPI(title="Suivi Infrastructures")
 templates = Jinja2Templates(directory="templates")
 @app.get("/", response_class=HTMLResponse)
 def accueil(request: Request):
