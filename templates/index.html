@@ -205,39 +205,106 @@
             options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
         });
 
-        // Carte
-        function createSvgIcon(color) {
-            const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="28" height="42">
-                <path fill="${color}" stroke="#fff" stroke-width="1.2" d="M12 0C5.4 0 0 5.4 0 12c0 7.2 12 24 12 24s12-16.8 12-24C24 5.4 18.6 0 12 0z"/>
-                <circle cx="12" cy="12" r="5" fill="#fff"/></svg>`;
-            return L.divIcon({ html: svg, className: '', iconSize: [28, 42], iconAnchor: [14, 42], popupAnchor: [0, -36] });
+// ===== Carte avec couches =====
+function createSvgIcon(color) {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="28" height="42">
+        <path fill="${color}" stroke="#fff" stroke-width="1.2" 
+              d="M12 0C5.4 0 0 5.4 0 12c0 7.2 12 24 12 24s12-16.8 12-24C24 5.4 18.6 0 12 0z"/>
+        <circle cx="12" cy="12" r="5" fill="#fff"/>
+    </svg>`;
+    return L.divIcon({
+        html: svg,
+        className: '',
+        iconSize: [28, 42],
+        iconAnchor: [14, 42],
+        popupAnchor: [0, -36]
+    });
+}
+
+const iconBlue = createSvgIcon('#2980b9');
+const iconRed  = createSvgIcon('#e74c3c');
+
+// Fonds de carte
+const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap'
+});
+
+const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Tiles © Esri'
+});
+
+const terrain = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenTopoMap'
+});
+
+// Groupes de marqueurs
+const markersNormaux = L.layerGroup();
+const markersAlertes = L.layerGroup();
+
+var points = [
+    {% for entry in entries %}
+        {% if entry.gps %}
+        {
+            lat: {{ entry.gps.lat }},
+            lon: {{ entry.gps.lon }},
+            project: "{{ entry.project }}",
+            date: "{{ entry.created_at }}",
+            id: {{ entry.id }},
+            alerte: {{ entry.alerte|tojson }}
+        },
+        {% endif %}
+    {% endfor %}
+];
+
+points.forEach(function(p) {
+    if (p.lat && p.lon) {
+        const icon = p.alerte ? iconRed : iconBlue;
+        const marker = L.marker([p.lat, p.lon], {icon: icon});
+        
+        marker.bindPopup(`
+            <b>${p.project}</b><br>
+            ${p.date}<br>
+            ID: ${p.id}
+            ${p.alerte ? '<br><span style="color:#e74c3c">⚠️ Alerte > 80 jours</span>' : ''}
+        `);
+        
+        if (p.alerte) {
+            markersAlertes.addLayer(marker);
+        } else {
+            markersNormaux.addLayer(marker);
         }
-        const iconBlue = createSvgIcon('#2980b9');
-        const iconRed = createSvgIcon('#e74c3c');
+    }
+});
 
-        var map = L.map('map').setView([12.65, -8.00], 7);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+// Création de la carte
+var map = L.map('map', {
+    center: [12.65, -8.00],
+    zoom: 7,
+    layers: [osm, markersNormaux, markersAlertes]  // couches activées par défaut
+});
 
-        var points = [
-            {% for entry in entries %}
-                {% if entry.gps %}
-                { lat: {{ entry.gps.lat }}, lon: {{ entry.gps.lon }}, project: "{{ entry.project }}", date: "{{ entry.created_at }}", id: {{ entry.id }}, alerte: {{ entry.alerte|tojson }} },
-                {% endif %}
-            {% endfor %}
-        ];
+// Contrôle des couches
+const baseMaps = {
+    "Plan (OpenStreetMap)": osm,
+    "Satellite": satellite,
+    "Terrain": terrain
+};
 
-        var markers = [];
-        points.forEach(function(p) {
-            if (p.lat && p.lon) {
-                var icon = p.alerte ? iconRed : iconBlue;
-                var marker = L.marker([p.lat, p.lon], {icon: icon}).addTo(map);
-                marker.bindPopup(`<b>${p.project}</b><br>${p.date}<br>ID: ${p.id}`);
-                markers.push(marker);
-            }
-        });
-        if (markers.length > 0) {
-            map.fitBounds(new L.featureGroup(markers).getBounds().pad(0.2));
-        }
+const overlayMaps = {
+    "Chantiers": markersNormaux,
+    "Alertes (> 80 jours)": markersAlertes
+};
+
+L.control.layers(baseMaps, overlayMaps, {
+    collapsed: false,   // toujours ouvert
+    position: 'topright'
+}).addTo(map);
+
+// Ajuster la vue
+const allMarkers = L.featureGroup([markersNormaux, markersAlertes]);
+if (allMarkers.getLayers().length > 0) {
+    map.fitBounds(allMarkers.getBounds().pad(0.2));
+}
     </script>
 </body>
 </html>
